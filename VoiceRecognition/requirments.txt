@@ -1,0 +1,6 @@
+sounddevice
+numpy
+wave
+librosa
+scikit-learn
+joblib
