@@ -328,3 +328,5 @@ while True:
         break
     else:
         print(f"Response: {adjust_volume(user_input) or adjust_brightness(user_input) or file_operations(user_input) or open_application(user_input) or system_info(user_input) or search_web(user_input) or set_reminder(user_input) or control_power(user_input) or open_file_or_directory(user_input)}")
+
+
