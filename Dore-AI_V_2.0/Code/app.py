@@ -65,7 +65,7 @@ import time
 import shutil
 import datetime
 import zipfile
-import speech_recognition as sr
+# import speech_recognition as sr
 import pytesseract
 import schedule
 import threading
@@ -409,7 +409,7 @@ def debug_area():
     pass
 
 
-# *********************************************************************** COMMADS AREA *************************************************************************************
+# *********************************************************************** COMMAND AREA *************************************************************************************
 
 DEFAULT_COMMAND_LIST = {'increase volume':'Increasaes Volume','decrease volume':'Decreasaes Volume','mute':'Mute Audio',
                         'increase brightness':'Increases Brightness','decrease brightness':'Decreases Brightness',
