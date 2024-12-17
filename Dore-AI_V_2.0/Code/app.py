@@ -1,12 +1,22 @@
 # ******************************************************************* Global Files *****************************************************************************************
 import os
 # Define the base directory
-FILES_DIR = "Dore-AI_V_2.0/Files/"
+# FILES_DIR = "Dore-AI_V_2.0/Files/"
+FILES_DIR = "../Files/"
 
 # File names
 ERROR_LOG_FILE = 'error_log.txt'
 INTERACTION_LOG_FILE = 'interaction_log.txt'
 USER_COMMANDS = "user_commands.json"
+SETTINGS_FILE = 'settings.json'
+
+MUSIC_STATE = False
+MODEL = ''
+
+with open(os.path.join(FILES_DIR, SETTINGS_FILE), 'r') as f:
+    data = json.load(f)
+    MODEL = data['chat_model']
+    f.close()
 
 # Check if the file exists, if not, create it
 def check_file(file):
@@ -80,6 +90,7 @@ import json
 import pyttsx3
 import PreDefinedResponse
 from settings import SettingsWindow
+from MusicPlayer import MusicPlayer
 
 # ********************************************************************** FUNCTIONS **************************************************************************************
 
@@ -139,6 +150,7 @@ def adjust_volume(command):
         log_error(f"adjust_volume: {e}")
         return "An error occurred while adjusting volume."
 
+# Adjust Brightness
 def adjust_brightness(command):
     current_brightness = sbc.get_brightness(display=0)
     level = 5
@@ -252,6 +264,27 @@ def search_web(command):
     except Exception as e:
         log_error(f"search_web: {e}")
         return "An error occurred while performing the search."
+
+# Media Control (Play, Pause, Next, Previous)
+def control_media(command):
+    try:
+        musicplayer = MusicPlayer()
+        if "play" in command or "pause" in command:
+            if not MUSIC_STATE:
+                musicplayer.play_in_thread()
+            else:
+                pyautogui.press('playpause')
+            return "Media playback toggled."
+        elif "next" in command:
+            pyautogui.press('nexttrack')
+            return "Next track."
+        elif "previous" in command:
+            pyautogui.press('prevtrack')
+            return "Previous track."
+        return "Command not recognized."
+    except Exception as e:
+        log_error(f"control_media: {e}")
+        return "An error occurred in media control."
 
 # Set a Reminder
 def set_reminder(command):
@@ -417,20 +450,21 @@ DEFAULT_COMMAND_LIST = {'increase volume':'Increasaes Volume','decrease volume':
                         'open browser':'Opens Web Browser','open text editor':'Open Default Text Editor',
                         'open terminal':'Opens Termial','system info':'Shows System Information','system status':'Shows System Information',
                         'search <query>':'Search on Browser','remind me <time in minutes>':'Set Remainer','shutdown':'Use carefully it shutdown the entire system',
-                        'restart':'Use carefully it restarts the entire system','battery':'Shows Battery current status','open file <file name>':'Opens the specified File'}
+                        'restart':'Use carefully it restarts the entire system','battery':'Shows Battery current status','open file <file name>':'Opens the specified File',
+                        'play':'Plays music', 'pause':'Pause the currently playing music track','next':'Play next music track',
+                        'previous':'Plays previous music track','open music app':'Opens in-built music player'}
 
 def load_commands():
     # Load user commands from a json file
     try:
         with open(FILES_DIR+USER_COMMANDS, 'r') as f:
             user_commands = json.load(f)
-            # convert to list
             return user_commands
     except FileNotFoundError:
         return {}
 
 def save_commands(commands):
-    with open('user_commands.json', 'w') as file:
+    with open(FILES_DIR+USER_COMMANDS, 'a') as file:
         json.dump(commands, file, indent=4)
 
 # *********************************************************************** COMMAND HANDLER ***********************************************************************************
@@ -457,6 +491,8 @@ def process_command(command):
         return check_battery(command)
     elif 'open file' in command or 'open directory' in command:
         return open_file_or_directory(command)
+    elif 'play music' in command or 'pause music' in command or 'next music' in command or 'previous music' in command:
+        return control_media(command)
     else:
         print(command == '/help')
         if command.strip() == '/settings':
@@ -478,13 +514,23 @@ def process_command(command):
             chat_ui = FloatingChatUI()
             chat_ui.show()
             return None
+        elif command.strip() == '/exit':
+            print ("Shutting down...")
+            time.sleep(3)
+            exit()
         elif command.startswith('/') and command != '/help' and command != '/settings' and command != '/commands':
             return 'unknown command'
         else:
+            chk_cmd = check_user_command(command)
+            if chk_cmd:
+              # execute commad using subprocess
+              threading.Thread(target=(subprocess.run(chk_cmd)))
+              return chk_cmd
             return False
 
 # Pre-defined Responses
 def predefined_response(command):
+    
     res = PreDefinedResponse.check_predefined_responses(command)
     print(res)
     if not res:
@@ -501,6 +547,14 @@ def predefined_response(command):
     else:
         return res
 
+# Checking user commands
+def check_user_command(command):
+    data = load_commands()
+    if data:
+        for command_name, commands in data.items():
+            if command_name == commands:
+                return command
+        return None
 
 # ************************************************************************* UI ***********************************************************************************
 
@@ -716,6 +770,7 @@ class FloatingChatUI(QWidget):
         """Send a message and show a response."""
         user_message = self.input_field.text().strip()
         if user_message:
+            user_message = user_message.lower()
             # response = random.choice(self.responses) # For demo
             response = predefined_response(user_message)
             # print(response)

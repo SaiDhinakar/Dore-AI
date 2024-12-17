@@ -9,7 +9,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QDate
 import sys
 
-FILES_DIR = "Dore-AI_V_2.0/Files/"
+# FILES_DIR = "Dore-AI_V_2.0/Files/"
+FILES_DIR = "../Files/"
 USER_SETTINGS_FILE = "settings.json"
 
 class User:
@@ -88,17 +89,25 @@ class User:
 
 
 # Settings UI
+import os
+import json
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QFormLayout, QLineEdit, 
+    QPushButton, QFileDialog, QDialogButtonBox, QMessageBox, QLabel
+)
+from PyQt5.QtCore import Qt
+
 class SettingsWindow(QDialog):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("User Settings")
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 500, 350)
 
         # Load settings
         self.load_settings()
 
-        # Layout
+        # Main Layout
         self.layout = QVBoxLayout()
 
         # Form layout for settings input
@@ -106,18 +115,29 @@ class SettingsWindow(QDialog):
 
         # Username Field
         self.username_input = QLineEdit(self.username)
+        self.username_input.setPlaceholderText("Enter your username")
         form_layout.addRow("Username:", self.username_input)
 
-        # DOB Field (Date Edit)
-        # self.dob_input = QDateEdit(QDate.fromString(self.dob, "dd-MM-yyyy"))
-        # self.dob_input.setCalendarPopup(True)
-        # form_layout.addRow("Date of Birth:", self.dob_input)
-
+        # Email Field
         self.email_input = QLineEdit(self.email)
+        self.email_input.setPlaceholderText("Enter your email address")
         form_layout.addRow("Email:", self.email_input)
 
-        self.email_app_password = QLineEdit(self.email_app_password)
-        form_layout.addRow("Email App Password:", self.email_app_password)
+        # Chat model Field
+        self.chat_model_name_input = QLineEdit(self.chat_model_name)
+        self.chat_model_name_input.setPlaceholderText("gemma2:2b")
+        form_layout.addRow("Chat Model Name:", self.chat_model_name_input)
+
+        # Music Directory Field with Browse Button
+        self.music_dir_input = QLineEdit(self.music)
+        self.music_dir_input.setPlaceholderText("Select your music directory")
+        self.browse_button = QPushButton("Browse")
+        self.browse_button.clicked.connect(self.browse_music_directory)
+
+        music_layout = QVBoxLayout()
+        music_layout.addWidget(self.music_dir_input)
+        music_layout.addWidget(self.browse_button)
+        form_layout.addRow("Music Directory:", music_layout)
 
         # Add the form layout to the main layout
         self.layout.addLayout(form_layout)
@@ -133,13 +153,13 @@ class SettingsWindow(QDialog):
 
     def load_settings(self):
         """Load user settings from a JSON file."""
-        settings_file = FILES_DIR+"settings.json"
+        settings_file = FILES_DIR+USER_SETTINGS_FILE
 
         # Default values if no settings file exists
         self.username = "Default User"
-        # self.dob = "01-01-2000"
         self.email = "example@gmail.com"
-        self.email_app_password = "1aS1 sdf1 asdd" # Example usage
+        self.music = ""
+        self.chat_model_name = "gemma2:2b"
 
         if os.path.exists(settings_file):
             try:
@@ -147,27 +167,50 @@ class SettingsWindow(QDialog):
                     data = json.load(file)
                     self.username = data.get("username", self.username)
                     self.email = data.get("email", self.email)
-                    self.email_app_password = data.get("email_app_password", self.email_app_password)
-                    
+                    self.music = data.get("music_dir", self.music)
+                    self.chat_model_name = data.get("chat_model", self.chat_model_name)
             except (json.JSONDecodeError, IOError) as e:
-                print(f"Error loading settings: {e}")
+                QMessageBox.warning(self, "Error", f"Error loading settings: {e}")
+
+    def browse_music_directory(self):
+        """Open a file dialog to select a directory."""
+        directory = QFileDialog.getExistingDirectory(self, "Select Music Directory")
+        if directory:
+            self.music_dir_input.setText(directory)
 
     def save_settings(self):
         """Save settings to the JSON file."""
-        settings_file = "settings.json"
+        settings_file = FILES_DIR+USER_SETTINGS_FILE
+
+        username = self.username_input.text().strip()
+        email = self.email_input.text().strip()
+        music_dir = self.music_dir_input.text().strip()
+        chat_model = self.chat_model_name_input.text().strip()
+
+        # Basic validation
+        if not username or not email:
+            QMessageBox.warning(self, "Validation Error", "Username and Email cannot be empty.")
+            return
+
+        if "@" not in email or "." not in email.split("@")[-1]:
+            QMessageBox.warning(self, "Validation Error", "Please enter a valid email address.")
+            return
 
         data = {
-            "username": self.username_input.text(),
-            "email":self.email_input.text(),
-            "email_app_password": self.email_app_password.text()
+            "username": username,
+            "email": email,
+            "music_dir": music_dir,
+            "chat_model":chat_model
         }
 
         try:
-            with open(FILES_DIR + USER_SETTINGS_FILE, 'w') as file:
+            with open(settings_file, 'w') as file:
                 json.dump(data, file, indent=4)
+            QMessageBox.information(self, "Success", "Settings saved successfully!")
             self.accept()  # Close the dialog
         except IOError as e:
-            print(f"Error saving settings: {e}")
+            QMessageBox.critical(self, "Error", f"Error saving settings: {e}")
+
 
 # Main Application
 def open_settings_dialog():
